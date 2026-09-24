@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이마트 x 고래잇 - 식재료 보물찾기 대작전</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Pretendard -->
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti Library for Fireworks Animation -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Pretendard', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            DEFAULT: '#FFD400', /* Emart Vivid Yellow */
+                            dark: '#E6BE00',
+                            light: '#FFFBEB'
+                        },
+                        navy: {
+                            DEFAULT: '#111827', /* Sophisticated Deep Navy */
+                            light: '#1F2937'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #F8FAFC;
+            color: #111827;
+            overflow: hidden; /* Single page view lock */
+        }
+        .page-section {
+            display: none;
+            height: calc(100vh - 72px);
+            overflow-y: auto;
+        }
+        .page-section.active {
+            display: block;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        @keyframes stampPop {
+            0% { transform: scale(3) rotate(-20deg); opacity: 0; }
+            60% { transform: scale(0.9) rotate(-5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(-8deg); opacity: 1; }
+        }
+        .animate-stamp {
+            animation: stampPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        /* Cute bouncy hover effect for cards */
+        .cute-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .cute-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.08), 0 8px 12px -6px rgba(0, 0, 0, 0.08);
+        }
+        /* Fixed 1:1 cell size for maze grid */
+        .maze-cell {
+            aspect-ratio: 1 / 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col">
+
+    <header class="bg-navy text-white border-b border-navy-light sticky top-0 z-50 h-[72px] flex items-center justify-between px-8 md:px-16 shadow-md">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="switchPage('home')">
+            <div class="bg-brand text-navy font-black px-3.5 py-2 rounded-xl text-lg tracking-tight shadow-sm flex items-center">
+                <span>EMART × GORAE</span>
+            </div>
+            <span class="font-bold text-lg text-white hidden sm:inline">이마트 식재료 보물찾기 대작전</span>
+        </div>
+        <nav class="hidden lg:flex items-center space-x-2 text-sm font-semibold text-slate-300">
+            <button onclick="switchPage('home')" id="nav-home" class="px-5 py-2.5 rounded-xl transition text-navy font-bold bg-brand shadow-sm">홈</button>
+            <button onclick="switchPage('game')" id="nav-game" class="px-5 py-2.5 rounded-xl transition hover:text-brand hover:bg-navy-light">보물찾기 미니 게임</button>
+            <button onclick="switchPage('recipe')" id="nav-recipe" class="px-5 py-2.5 rounded-xl transition hover:text-brand hover:bg-navy-light">주간 레시피</button>
+            <button onclick="switchPage('reward')" id="nav-reward" class="px-5 py-2.5 rounded-xl transition hover:text-brand hover:bg-navy-light">이벤트 & 리워드</button>
+            <button onclick="switchPage('review')" id="nav-review" class="px-5 py-2.5 rounded-xl transition hover:text-brand hover:bg-navy-light">리뷰 이벤트</button>
+        </nav>
+        <button class="lg:hidden text-white focus:outline-none p-2.5 rounded-xl hover:bg-navy-light" onclick="toggleMobileMenu()">
+            <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+    </header>
+
+    <div id="mobile-menu" class="hidden fixed inset-x-0 top-[72px] bg-navy text-white border-b border-navy-light shadow-xl z-40 p-4 space-y-2 lg:hidden">
+        <button onclick="switchPage('home'); toggleMobileMenu();" class="block w-full text-left px-4 py-3 rounded-xl font-medium text-slate-200 hover:bg-brand hover:text-navy transition">홈</button>
+        <button onclick="switchPage('game'); toggleMobileMenu();" class="block w-full text-left px-4 py-3 rounded-xl font-medium text-slate-200 hover:bg-brand hover:text-navy transition">보물찾기 미니 게임</button>
+        <button onclick="switchPage('recipe'); toggleMobileMenu();" class="block w-full text-left px-4 py-3 rounded-xl font-medium text-slate-200 hover:bg-brand hover:text-navy transition">주간 레시피</button>
+        <button onclick="switchPage('reward'); toggleMobileMenu();" class="block w-full text-left px-4 py-3 rounded-xl font-medium text-slate-200 hover:bg-brand hover:text-navy transition">이벤트 & 리워드</button>
+        <button onclick="switchPage('review'); toggleMobileMenu();" class="block w-full text-left px-4 py-3 rounded-xl font-medium text-slate-200 hover:bg-brand hover:text-navy transition">리뷰 이벤트</button>
+    </div>
+
+    <main class="flex-1 relative overflow-hidden">
+
+        <section id="section-home" class="page-section active p-8 md:p-14">
+            <div class="max-w-6xl mx-auto space-y-12">
+                
+                <!-- Main Intro Banner with Weekly Recipe Preview (No borders, no heavy gradients, refined modern look) -->
+                <div class="bg-white rounded-3xl p-10 md:p-16 shadow-sm border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center cute-card">
+                    <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                        <span class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-brand/20 text-navy tracking-wide">
+                            <i class="fa-solid fa-face-smile-wink mr-1.5 text-amber-500 text-sm"></i> 이마트 x 고래잇 패밀리 콜라보레이션
+                        </span>
+                        <h1 class="text-3xl md:text-5xl font-extrabold text-navy tracking-tight leading-snug">
+                            우리 아이와 함께하는 즐거운 매장 탐험!<br>이마트 식재료 보물찾기 대작전
+                        </h1>
+                        <p class="text-slate-600 text-base md:text-lg font-medium leading-relaxed">
+                            아이와 함께 이마트 매장을 탐험하며 오늘의 요리 재료를 찾으세요!<br>스탬프를 모두 모으면 한정판 캐릭터 굿즈와 장보기 할인 쿠폰 증정!
+                        </p>
+                        <div class="pt-2 flex flex-wrap justify-center lg:justify-start gap-4">
+                            <button onclick="switchPage('game')" class="bg-brand hover:bg-brand-dark text-navy font-bold px-8 py-4 rounded-2xl shadow-sm transition flex items-center space-x-2 text-base">
+                                <span>보물찾기 하러가기</span>
+                                <i class="fa-solid fa-gamepad text-navy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Recipe Preview Card inside Home Banner -->
+                    <div class="lg:col-span-5 bg-slate-50 p-6 rounded-3xl border border-slate-200/80 shadow-inner space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold bg-brand text-navy px-3 py-1 rounded-full"><i class="fa-solid fa-utensils mr-1"></i>이번 주 추천 레시피 미리보기</span>
+                            <button onclick="switchPage('recipe')" class="text-xs font-bold text-slate-500 hover:text-navy transition">자세히 보기 &rarr;</button>
+                        </div>
+                        <div class="flex items-center space-x-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-3xl shadow-inner">🍛</div>
+                            <div>
+                                <h3 class="font-extrabold text-navy text-base">고소한 야채 카레</h3>
+                                <p class="text-xs text-slate-500 mt-0.5">🥔 감자 · 🥕 당근 · 🧅 양파 · 🍛 카레 루</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed px-1">
+                            보물찾기 미니 게임에서 모은 신선한 재료들로 아이와 함께 맛있는 카레를 만들어보세요!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sub-tab Navigation Buttons for Home Showcase (Poster / Card News / Shorts) -->
+                <div class="flex justify-center space-x-3 bg-white p-3 rounded-2xl shadow-sm max-w-lg mx-auto border border-slate-100">
+                    <button onclick="switchHomeTab('poster')" id="tab-poster" class="flex-1 py-3 px-6 rounded-xl text-sm font-bold bg-navy text-white transition shadow-sm">메인 포스터</button>
+                    <button onclick="switchHomeTab('cardnews')" id="tab-cardnews" class="flex-1 py-3 px-6 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition">카드 뉴스</button>
+                    <button onclick="switchHomeTab('shorts')" id="tab-shorts" class="flex-1 py-3 px-6 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition">숏폼 영상</button>
+                </div>
+
+                <!-- HOME SHOWCASE 1: POSTER (9:16 default with image.png) -->
+                <div id="home-view-poster" class="home-showcase-view bg-white p-10 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center space-y-6">
+                    <div class="text-center space-y-1">
+                        <h2 class="text-xl font-bold text-navy"><i class="fa-solid fa-image mr-2 text-amber-500"></i> 메인 포스터</h2>
+                        <p class="text-xs text-slate-500">9:16 비율의 공식 포스터 이미지 (image.png)</p>
+                    </div>
+                    <!-- 9:16 Container -->
+                    <div class="w-full max-w-[320px] aspect-[9/16] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col items-center justify-center relative shadow-inner">
+                        <input type="file" id="poster-upload" accept="image/png, image/jpeg" class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="previewPoster(event)" title="클릭하여 다른 이미지로 교체">
+                        <img id="poster-preview-img" src="image.png" class="w-full h-full object-cover" alt="메인 포스터 image.png" onerror="this.onerror=null; this.src='https://placehold.co/320x569/FFD400/111827?text=image.png';">
+                    </div>
+                </div>
+
+                <!-- HOME SHOWCASE 2: CARD NEWS (1:1 aspect ratio, 6 slides with 01.png ~ 06.png) -->
+                <div id="home-view-cardnews" class="home-showcase-view hidden bg-white p-10 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center space-y-6">
+                    <div class="flex items-center justify-between w-full max-w-md">
+                        <div>
+                            <h2 class="text-xl font-bold text-navy"><i class="fa-solid fa-id-card mr-2 text-amber-500"></i> 카드 뉴스</h2>
+                            <p class="text-xs text-slate-500">1:1 비율의 카드 뉴스 슬라이드 (총 6장: 01.png ~ 06.png)</p>
+                        </div>
+                        <div class="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-xl">
+                            <button onclick="setCardLang('ko')" id="card-lang-ko" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-navy text-white transition">한국어</button>
+                            <button onclick="setCardLang('en')" id="card-lang-en" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition">English</button>
+                        </div>
+                    </div>
+
+                    <!-- 1:1 Slider Container with Image & GitHub-compatible Fallback -->
+                    <div class="relative w-full max-w-[380px] aspect-square bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center overflow-hidden">
+                        <div class="absolute top-4 left-4 z-20 bg-white/90 px-3 py-1 rounded-full text-xs font-bold text-navy shadow-sm">
+                            <span id="card-current-idx">1</span> / 6
+                        </div>
+                        
+                        <!-- Card Image (01.png to 06.png) with GitHub relative path support -->
+                        <img id="card-img-element" src="./01.png" class="absolute inset-0 w-full h-full object-cover" alt="카드뉴스 이미지" onload="handleCardImgLoad(this)" onerror="handleCardImgError(this);">
+                        
+                        <!-- Fallback Content Overlay if image file is missing or blocked -->
+                        <div id="card-text-fallback" class="hidden absolute inset-0 bg-amber-50/95 flex flex-col items-center justify-center p-8 text-center space-y-4">
+                            <div id="card-emoji" class="text-6xl">🛒</div>
+                            <h3 id="card-title" class="text-xl font-extrabold text-navy">이마트에서 찾는 보물!</h3>
+                            <p id="card-desc" class="text-sm text-slate-600 leading-relaxed">장바구니 속 미션을 완료하고 특별한 선물을 받아가세요.</p>
+                            <span class="text-[10px] text-amber-700 font-semibold bg-amber-100/80 px-2.5 py-1 rounded-md">💡 깃허브 루트 디렉토리에 01.png~06.png 파일이 있는지 확인해주세요.</span>
+                        </div>
+                        
+                        <!-- Left / Right Navigation Buttons -->
+                        <button onclick="prevCardSlide()" class="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white text-navy rounded-full shadow-md flex items-center justify-center transition z-20">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button onclick="nextCardSlide()" class="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white text-navy rounded-full shadow-md flex items-center justify-center transition z-20">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HOME SHOWCASE 3: SHORTS VIDEO (9:16 Reels/Shorts Style with 5t.mp4) -->
+                <div id="home-view-shorts" class="home-showcase-view hidden bg-white p-10 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center space-y-6">
+                    <div class="text-center space-y-1">
+                        <h2 class="text-xl font-bold text-navy"><i class="fa-solid fa-video mr-2 text-amber-500"></i> 숏폼 영상</h2>
+                        <p class="text-xs text-slate-500">유튜브 쇼츠 스타일의 9:16 영상 플레이어 (5t.mp4)</p>
+                    </div>
+
+                    <!-- 9:16 Reels Style Container with white player styling -->
+                    <div class="w-full max-w-[300px] aspect-[9/16] bg-slate-900 rounded-3xl overflow-hidden relative shadow-2xl border-4 border-white flex flex-col justify-between">
+                        <!-- Top Header -->
+                        <div class="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/70 to-transparent text-white">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-7 h-7 rounded-full bg-white text-navy flex items-center justify-center text-xs font-black shadow">E</div>
+                                <span class="text-xs font-bold text-white">이마트 탐험대</span>
+                            </div>
+                            <span class="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">Live</span>
+                        </div>
+
+                        <!-- Video Element for 5t.mp4 -->
+                        <div class="absolute inset-0 flex items-center justify-center bg-slate-950">
+                            <video id="shorts-video-player" src="5t.mp4" class="w-full h-full object-cover" controls autoplay loop muted playsinline onerror="handleVideoError(this)"></video>
+                            <div id="shorts-error-fallback" class="hidden absolute inset-0 bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center space-y-3">
+                                <i class="fa-solid fa-film text-4xl text-amber-400"></i>
+                                <p class="text-xs font-bold">5t.mp4 파일을 불러오지 못했습니다.<br>아래에서 파일을 업로드해주세요.</p>
+                                <input type="file" id="shorts-upload" accept="video/mp4" class="text-[10px] bg-white text-navy px-3 py-1.5 rounded-lg cursor-pointer font-bold" onchange="previewShortsVideo(event)">
+                            </div>
+                        </div>
+
+                        <!-- Bottom Reels Overlay (Caption & Heart Reaction with white theme accents) -->
+                        <div class="absolute bottom-0 inset-x-0 p-4 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-end justify-between text-white">
+                            <div class="text-left space-y-1">
+                                <p class="text-xs font-bold text-white">@gorae_it_official</p>
+                                <p class="text-[11px] text-slate-200 truncate max-w-[170px]">오늘 저녁은 아이랑 카레 만들기! 🥕🥔</p>
+                            </div>
+                            <button onclick="toggleShortsHeart(this)" class="flex flex-col items-center text-white hover:text-red-400 transition focus:outline-none">
+                                <i class="fa-solid fa-heart text-2xl shorts-heart-icon text-white drop-shadow"></i>
+                                <span id="shorts-like-count" class="text-[10px] font-bold mt-0.5">1.4k</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Representative Reviews Section on Home -->
+                <div class="bg-white rounded-3xl p-10 md:p-12 shadow-sm border border-slate-100 space-y-6 cute-card">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-bold text-navy flex items-center"><i class="fa-solid fa-star text-amber-400 mr-2"></i> 대표 탐험 후기</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">이마트 보물찾기에 참여한 가족들의 생생한 후기입니다.</p>
+                        </div>
+                        <button onclick="switchPage('review')" class="text-xs font-bold text-navy bg-brand/30 hover:bg-brand px-4 py-2 rounded-xl transition">후기 전체보기</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex justify-between items-center text-xs text-slate-500">
+                                <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> 박서준 가족</span>
+                                <span class="text-amber-500 font-bold">★★★★★</span>
+                            </div>
+                            <p class="text-xs text-slate-700 leading-relaxed">아이들이 너무 좋아해요! 평소 지루해하던 장보기가 보물찾기 놀이가 되니 스스로 재료를 찾아 담네요. 굿즈까지 받아서 최고입니다!</p>
+                        </div>
+                        <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex justify-between items-center text-xs text-slate-500">
+                                <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> 김이마트 가족</span>
+                                <span class="text-amber-500 font-bold">★★★★★</span>
+                            </div>
+                            <p class="text-xs text-slate-700 leading-relaxed">스탬프 모으는 재미에 시간이 훌쩍 갔어요. 주간 레시피로 카레도 맛있게 만들어 먹었습니다. 다음 주 미션도 기대돼요!</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="section-game" class="page-section p-8 md:p-14">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy">보물찾기 미니 게임</h2>
+                        <p class="text-slate-500 text-sm">미로 같은 매장 통로를 방향키로 탐색하여 식재료(🥔, 🥕, 🧅, 🍛)를 모두 수집하세요!</p>
+                    </div>
+                    <button onclick="startMiniGame()" class="bg-brand hover:bg-brand-dark text-navy font-bold px-6 py-3 rounded-xl shadow-sm transition">게임 재시작</button>
+                </div>
+
+                <div class="bg-white p-10 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center space-y-6 cute-card">
+                    <div class="flex items-center justify-between w-full max-w-[400px] px-2 text-sm font-bold text-navy">
+                        <div>수집한 식재료: <span id="game-items-collected" class="text-amber-600 font-extrabold">0</span> / 4</div>
+                        <div>상태: <span id="game-status-text" class="text-slate-600">탐험 중...</span></div>
+                    </div>
+
+                    <!-- Maze Board (6x6) with white and gray checkerboard styling -->
+                    <div id="grid-board" class="grid grid-cols-6 gap-2 p-4 bg-slate-100 rounded-3xl w-full max-w-[400px] border border-slate-200 shadow-inner">
+                        <!-- Generated via JS -->
+                    </div>
+
+                    <!-- Touch / Directional Controls -->
+                    <div class="grid grid-cols-3 gap-2 w-full max-w-[240px]">
+                        <div></div>
+                        <button onclick="movePlayer('up')" class="bg-navy hover:bg-navy-light text-white font-bold p-4 rounded-2xl shadow transition"><i class="fa-solid fa-arrow-up"></i></button>
+                        <div></div>
+                        <button onclick="movePlayer('left')" class="bg-navy hover:bg-navy-light text-white font-bold p-4 rounded-2xl shadow transition"><i class="fa-solid fa-arrow-left"></i></button>
+                        <button onclick="movePlayer('down')" class="bg-navy hover:bg-navy-light text-white font-bold p-4 rounded-2xl shadow transition"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button onclick="movePlayer('right')" class="bg-navy hover:bg-navy-light text-white font-bold p-4 rounded-2xl shadow transition"><i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-recipe" class="page-section p-8 md:p-14">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy">주간 레시피</h2>
+                        <p class="text-slate-500 text-sm">보물찾기 게임과 연동된 이마트 추천 요리법입니다. 전 세계 언어로 만나보세요.</p>
+                    </div>
+                    <!-- Global Language Selector -->
+                    <select id="recipe-lang-select" onchange="changeRecipeLang(this.value)" class="bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium text-navy shadow-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <option value="ko">🇰🇷 한국어 (Korean)</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="zh">🇨🇳 中文 (Chinese)</option>
+                        <option value="ja">🇯🇵 日本語 (Japanese)</option>
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="vi">🇻🇳 Tiếng Việt</option>
+                    </select>
+                </div>
+
+                <div class="bg-white p-10 md:p-12 rounded-3xl border border-slate-100 shadow-sm space-y-6 cute-card">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-brand/20 text-navy rounded-2xl flex items-center justify-center text-3xl font-bold shadow-sm">🍛</div>
+                        <div>
+                            <span id="recipe-tag" class="text-xs font-bold bg-brand text-navy px-3.5 py-1.5 rounded-full">이번 주 추천 요리</span>
+                            <h3 id="recipe-title" class="text-xl md:text-2xl font-extrabold text-navy mt-1">아이와 함께 만드는 고소한 야채 카레</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-slate-100 pt-6 space-y-4">
+                        <h4 id="recipe-ingredients-label" class="text-sm font-bold text-navy flex items-center"><i class="fa-solid fa-basket-shopping mr-2 text-amber-500"></i>필요한 재료:</h4>
+                        <!-- Ingredients with color badges and pictograms -->
+                        <div id="recipe-ingredients" class="flex flex-wrap gap-3">
+                            <span class="bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-sm"><span>🥔</span><span>감자 2개</span></span>
+                            <span class="bg-orange-100 text-orange-900 border border-orange-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-sm"><span>🥕</span><span>당근 1개</span></span>
+                            <span class="bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-sm"><span>🧅</span><span>양파 1개</span></span>
+                            <span class="bg-yellow-100 text-yellow-900 border border-yellow-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-sm"><span>🍛</span><span>카레 루 1개</span></span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-6 space-y-3">
+                        <h4 id="recipe-steps-label" class="text-sm font-bold text-navy flex items-center"><i class="fa-solid fa-utensils mr-2 text-amber-500"></i>조리 방법:</h4>
+                        <div id="recipe-steps-desc" class="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                            <p>1️⃣ 🥔 <span class="font-bold">신선한 감자</span>와 🥕 <span class="font-bold">당근</span>, 🧅 <span class="font-bold">양파</span>를 깨끗이 씻고 한 입 크기로 썰어주세요.</p>
+                            <p>2️⃣ 🍳 냄비에 기름을 두르고 채소를 살짝 볶아줍니다.</p>
+                            <p>3️⃣ 💧 물을 붓고 채소가 익을 때까지 끓인 뒤 🍛 <span class="font-bold">카레 루</span>를 넣고 부드럽게 녹여주세요.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-reward" class="page-section p-8 md:p-14">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy">이벤트 참여 & 리워드 안내</h2>
+                        <p class="text-slate-500 text-sm">매주 새롭게 찾아오는 주간 레시피와 푸짐한 리워드를 확인하세요.</p>
+                    </div>
+                    <!-- Global Language Selector for Rewards -->
+                    <select id="reward-lang-select" onchange="changeRewardLang(this.value)" class="bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium text-navy shadow-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <option value="ko">🇰🇷 한국어 (Korean)</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="zh">🇨🇳 中文 (Chinese)</option>
+                        <option value="ja">🇯🇵 日本語 (Japanese)</option>
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="vi">🇻🇳 Tiếng Việt</option>
+                    </select>
+                </div>
+
+                <!-- Info Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-3 cute-card">
+                        <div class="text-navy text-lg font-bold flex items-center"><i class="fa-solid fa-calendar-days mr-2 text-amber-500"></i><span id="schedule-title-text">주간 레시피 갱신 안내</span></div>
+                        <p id="schedule-desc-text" class="text-sm text-slate-600 leading-relaxed">매주 새로운 주간 레시피와 새로운 식재료 탐험 미션으로 변경됩니다!</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-3 cute-card">
+                        <div class="text-navy text-lg font-bold flex items-center"><i class="fa-solid fa-users mr-2 text-amber-500"></i><span id="target-title-text">참여 대상</span></div>
+                        <p id="target-desc-text" class="text-sm text-slate-600 leading-relaxed">이마트를 방문하는 모든 어린이 동반 고객 가족</p>
+                    </div>
+                </div>
+
+                <!-- Mission Reward Lineup (Clean White Emoji Cards) -->
+                <div class="bg-white p-10 rounded-3xl border border-slate-100 shadow-sm space-y-6 cute-card">
+                    <h3 id="reward-lineup-title" class="text-lg font-bold text-navy">미션 완료 증정 리워드 라인업</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-3 flex flex-col items-center cute-card">
+                            <div class="text-5xl">🧸</div>
+                            <h4 class="font-bold text-navy text-sm">한정판 캐릭터 키링</h4>
+                            <p class="text-xs text-slate-500">스탬프 달성 시 즉시 증정</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-3 flex flex-col items-center cute-card">
+                            <div class="text-5xl">🎟️</div>
+                            <h4 class="font-bold text-navy text-sm">장보기 할인 쿠폰</h4>
+                            <p class="text-xs text-slate-500">미션 완주 전원 모바일 쿠폰</p>
+                        </div>
+                        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center space-y-3 flex flex-col items-center cute-card">
+                            <div class="text-5xl">👑</div>
+                            <h4 class="font-bold text-navy text-sm">명예 탐험대장 배지</h4>
+                            <p class="text-xs text-slate-500">우수 참여 가족 특별 리워드</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-review" class="page-section p-8 md:p-14">
+            <div class="max-w-4xl mx-auto space-y-8">
+                <div class="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-navy">리뷰 이벤트</h2>
+                        <p class="text-slate-500 text-sm">이마트 식재료 보물찾기 참여 후기와 인증 사진을 남겨주시면 추첨을 통해 푸짐한 선물을 드립니다!</p>
+                    </div>
+                    <button onclick="scrollToReviewForm()" class="bg-brand hover:bg-brand-dark text-navy font-bold px-5 py-2.5 rounded-xl transition shadow-sm text-xs flex items-center space-x-1.5">
+                        <i class="fa-solid fa-pen"></i>
+                        <span>리뷰 등록</span>
+                    </button>
+                </div>
+
+                <div class="space-y-8">
+                    <!-- Event Guide Card -->
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-4 cute-card">
+                        <div class="w-12 h-12 bg-brand/20 text-navy rounded-2xl flex items-center justify-center text-xl font-bold">⭐</div>
+                        <h3 class="font-bold text-navy text-lg">이벤트 참여 방법 및 경품</h3>
+                        <ul class="text-xs text-slate-600 space-y-2.5 list-disc list-inside">
+                            <li>이마트 매장 탐험 인증샷 촬영</li>
+                            <li>개인 SNS(인스타그램 등) 업로드</li>
+                            <li>필수 해시태그 (#이마트고래잇 #보물찾기대작전) 입력</li>
+                            <li>아래 양식에 사진과 함께 리뷰 등록하기</li>
+                        </ul>
+                        <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200/50 text-xs text-amber-900 space-y-1">
+                            <p class="font-bold">🎁 이벤트 경품: 이마트 모바일 상품권 1만원권 (매주 20명 추첨)</p>
+                        </div>
+                    </div>
+
+                    <!-- All Reviews List with small '더보기' link -->
+                    <div class="bg-white p-10 rounded-3xl border border-slate-100 shadow-sm space-y-6 cute-card">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-navy text-lg">전체 탐험 후기 목록</h3>
+                            <button onclick="scrollToReviewList()" class="text-xs font-bold text-slate-500 hover:text-navy transition">더보기 &darr;</button>
+                        </div>
+                        <div id="review-list" class="space-y-4">
+                            <!-- Dynamic reviews -->
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                                <div class="flex justify-between items-center text-xs text-slate-500">
+                                    <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> 박서준 가족</span>
+                                    <span>2026.06.07</span>
+                                </div>
+                                <p class="text-xs text-slate-700 leading-relaxed">아이들이 너무 좋아해요! 장보기가 놀이가 되네요. 강추합니다!</p>
+                            </div>
+                            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                                <div class="flex justify-between items-center text-xs text-slate-500">
+                                    <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> 김이마트 가족</span>
+                                    <span>2026.06.06</span>
+                                </div>
+                                <p class="text-xs text-slate-700 leading-relaxed">스탬프 모으는 재미에 시간이 훌쩍 갔어요. 주간 레시피로 카레도 맛있게 만들어 먹었습니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review Submission Form at the Bottom -->
+                    <div id="review-form-anchor" class="bg-white p-10 rounded-3xl border border-slate-100 shadow-sm space-y-6 cute-card">
+                        <h3 class="font-bold text-navy text-lg"><i class="fa-solid fa-pen-to-square mr-2 text-amber-500"></i>새로운 탐험 후기 등록하기</h3>
+                        <form onsubmit="submitReview(event)" class="space-y-5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">작성자 이름</label>
+                                <input type="text" id="review-author" required placeholder="예: 김이마트" class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">인증 사진 첨부</label>
+                                <input type="file" id="review-photo" accept="image/*" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand file:text-navy hover:file:bg-brand-dark cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">후기 내용</label>
+                                <textarea id="review-content" required rows="4" placeholder="아이와 함께 너무 즐거운 장보기였어요! 미션 스탬프도 모으고 굿즈도 받아서 행복합니다." class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-brand hover:bg-brand-dark text-navy font-bold py-4 rounded-xl transition shadow-sm text-base">리뷰 등록 완료</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Custom Modal & Clear Stamp Popup -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-navy/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div class="w-14 h-14 bg-brand text-navy rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <p id="modal-message" class="text-sm font-medium text-slate-700 leading-relaxed">알림 메시지 내용입니다.</p>
+            <button onclick="closeModal()" class="w-full bg-navy hover:bg-navy-light text-white font-semibold py-3.5 rounded-xl transition shadow-sm text-sm">확인</button>
+        </div>
+    </div>
+
+    <div id="clear-modal" class="hidden fixed inset-0 bg-navy/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-10 max-w-sm w-full shadow-2xl space-y-6 text-center relative overflow-hidden cute-card">
+            <div class="absolute -right-10 -top-10 w-32 h-32 bg-brand/30 rounded-full blur-xl pointer-events-none"></div>
+            
+            <!-- Stamp animation element with "미션 성공!" -->
+            <div class="inline-block border-4 border-red-600 text-red-600 font-black text-3xl px-6 py-3 rounded-2xl uppercase tracking-widest animate-stamp shadow-lg bg-red-50/90">
+                미션 성공!
+            </div>
+            
+            <div class="space-y-2">
+                <h3 class="text-xl font-extrabold text-navy">축하합니다! 미션 클리어!</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">모든 식재료 보물을 찾아 스탬프가 쾅 찍혔습니다. 리워드를 확인하러 가볼까요?</p>
+            </div>
+            <button onclick="goToRewardPage()" class="w-full bg-brand hover:bg-brand-dark text-navy font-bold py-4 rounded-xl transition shadow-sm text-sm">리워드 페이지로 이동하기</button>
+        </div>
+    </div>
+
+    <script>
+        // Single Page Section Switcher
+        function switchPage(pageId) {
+            const sections = document.querySelectorAll('.page-section');
+            sections.forEach(sec => sec.classList.remove('active'));
+
+            const targetSection = document.getElementById(`section-${pageId}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Update Header Navigation Active State
+            const navButtons = document.querySelectorAll('header nav button');
+            navButtons.forEach(btn => {
+                btn.classList.remove('text-navy', 'font-bold', 'bg-brand', 'shadow-sm');
+                btn.classList.add('hover:text-brand', 'hover:bg-navy-light');
+            });
+
+            // Find matching active button
+            const navMap = { home: 'nav-home', game: 'nav-game', recipe: 'nav-recipe', reward: 'nav-reward', review: 'nav-review' };
+            const activeNavBtnId = navMap[pageId];
+            if (activeNavBtnId) {
+                const activeNavBtn = document.getElementById(activeNavBtnId);
+                if (activeNavBtn) {
+                    activeNavBtn.classList.remove('hover:text-brand', 'hover:bg-navy-light');
+                    activeNavBtn.classList.add('text-navy', 'font-bold', 'bg-brand', 'shadow-sm');
+                }
+            }
+
+            if (targetSection) targetSection.scrollTop = 0;
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function alertBox(message) {
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        // Home Sub-tab Switcher (Poster / Card News / Shorts)
+        function switchHomeTab(tabName) {
+            const views = document.querySelectorAll('.home-showcase-view');
+            views.forEach(v => v.classList.add('hidden'));
+
+            const targetView = document.getElementById(`home-view-${tabName}`);
+            if(targetView) targetView.classList.remove('hidden');
+
+            const tabs = ['poster', 'cardnews', 'shorts'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if(t === tabName) {
+                    btn.className = "flex-1 py-3 px-6 rounded-xl text-sm font-bold bg-navy text-white transition shadow-sm";
+                } else {
+                    btn.className = "flex-1 py-3 px-6 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition";
+                }
+            });
+        }
+
+        // Card News 6 Slides Data (01.png ~ 06.png with GitHub relative path support)
+        let currentCardIdx = 0;
+        let cardLangMode = 'ko';
+
+        const cardSlidesData = {
+            ko: [
+                { emoji: "🛒", title: "이마트에서 찾는 보물!", desc: "장바구니 속 미션을 완료하고 특별한 선물을 받아가세요." },
+                { emoji: "🥕", title: "신선한 식재료 탐험", desc: "매장 곳곳에 숨겨진 신선한 채소와 과일을 찾아보세요." },
+                { emoji: "👨‍👩‍👧‍👦", title: "온 가족이 함께 즐기는 장보기", desc: "아이와 부모가 함께 소통하며 즐기는 에듀테인먼트 쇼핑!" },
+                { emoji: "⭐", title: "스탬프 랠리 미션", desc: "모든 미션을 완주하고 스탬프를 쾅 찍어보세요." },
+                { emoji: "🎁", title: "한정판 캐릭터 굿즈", desc: "완주 시 귀여운 콜라보레이션 캐릭터 키링 즉시 증정!" },
+                { emoji: "🎟️", title: "모바일 할인 쿠폰", desc: "다음 장보기에 사용할 수 있는 특별 할인 쿠폰 혜택!" }
+            ],
+            en: [
+                { emoji: "🛒", title: "Treasure Hunt at Emart!", desc: "Complete your shopping mission and claim special gifts." },
+                { emoji: "🥕", title: "Fresh Food Exploration", desc: "Discover fresh vegetables and fruits hidden across the store." },
+                { emoji: "👨‍👩‍👧‍👦", title: "Family Shopping Adventure", desc: "An edutainment shopping experience for parents and kids!" },
+                { emoji: "⭐", title: "Stamp Rally Mission", desc: "Complete all missions and collect your stamps." },
+                { emoji: "🎁", title: "Limited Edition Goods", desc: "Get cute collaboration character keyrings instantly upon completion!" },
+                { emoji: "🎟️", title: "Mobile Discount Coupons", desc: "Special discount coupons for your next grocery shopping!" }
+            ]
+        };
+
+        function updateCardSlide() {
+            // Use explicit relative path format (./01.png) for GitHub Pages compatibility
+            const filename = `./0${currentCardIdx + 1}.png`;
+            const imgElement = document.getElementById('card-img-element');
+            const fallbackDiv = document.getElementById('card-text-fallback');
+            
+            // Reset state
+            fallbackDiv.classList.add('hidden');
+            imgElement.style.display = 'block';
+            imgElement.src = filename;
+
+            document.getElementById('card-current-idx').innerText = currentCardIdx + 1;
+            
+            const data = cardSlidesData[cardLangMode][currentCardIdx];
+            document.getElementById('card-emoji').innerText = data.emoji;
+            document.getElementById('card-title').innerText = data.title;
+            document.getElementById('card-desc').innerText = data.desc;
+        }
+
+        function handleCardImgLoad(img) {
+            // Image loaded successfully
+            img.style.display = 'block';
+            document.getElementById('card-text-fallback').classList.add('hidden');
+        }
+
+        function handleCardImgError(img) {
+            // Image failed to load (e.g. file missing on GitHub repository) -> Show fallback card design
+            img.style.display = 'none';
+            document.getElementById('card-text-fallback').classList.remove('hidden');
+        }
+
+        function nextCardSlide() {
+            currentCardIdx = (currentCardIdx + 1) % 6;
+            updateCardSlide();
+        }
+
+        function prevCardSrc() {
+            // placeholder for safety
+        }
+
+        function prevCardSlide() {
+            currentCardIdx = (currentCardIdx - 1 + 6) % 6;
+            updateCardSlide();
+        }
+
+        function setCardLang(lang) {
+            cardLangMode = lang;
+            const btnKo = document.getElementById('card-lang-ko');
+            const btnEn = document.getElementById('card-lang-en');
+            if(lang === 'ko') {
+                btnKo.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-navy text-white transition";
+                btnEn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition";
+            } else {
+                btnEn.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold bg-navy text-white transition";
+                btnKo.className = "px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 transition";
+            }
+            updateCardSlide();
+        }
+
+        // Shorts 5t.mp4 Video Handling
+        function handleVideoError(video) {
+            video.style.display = 'none';
+            document.getElementById('shorts-error-fallback').classList.remove('hidden');
+        }
+
+        function previewShortsVideo(event) {
+            const file = event.target.files[0];
+            if(file) {
+                const videoURL = URL.createObjectURL(file);
+                const player = document.getElementById('shorts-video-player');
+                player.src = videoURL;
+                player.style.display = 'block';
+                player.play();
+                document.getElementById('shorts-error-fallback').classList.add('hidden');
+            }
+        }
+
+        function toggleShortsHeart(btn) {
+            const icon = btn.querySelector('.shorts-heart-icon');
+            const countSpan = document.getElementById('shorts-like-count');
+            if (icon.classList.contains('fa-solid')) {
+                icon.classList.remove('fa-solid', 'text-red-400');
+                icon.classList.add('fa-regular', 'text-white');
+                countSpan.innerText = "1.4k";
+            } else {
+                icon.classList.remove('fa-regular', 'text-white');
+                icon.classList.add('fa-solid', 'text-red-400');
+                countSpan.innerText = "1.5k";
+            }
+        }
+
+        // Mini Game Logic (6x6 maze grid with white and gray checkerboard styling)
+        const gridSize = 6;
+        let playerPos = { r: 0, c: 0 };
+        let items = [];
+        let collectedCount = 0;
+        const totalItemsNeeded = 4;
+        let gameActive = false;
+
+        const mazeWalls = [
+            { r: 0, c: 1 }, { r: 1, c: 3 }, { r: 2, c: 1 }, { r: 2, c: 4 },
+            { r: 3, c: 2 }, { r: 4, c: 4 }, { r: 5, c: 1 }, { r: 3, c: 5 }
+        ];
+
+        function isWall(r, c) {
+            return mazeWalls.some(w => w.r === r && w.c === c);
+        }
+
+        function startMiniGame() {
+            playerPos = { r: 0, c: 0 };
+            collectedCount = 0;
+            gameActive = true;
+            document.getElementById('game-items-collected').innerText = collectedCount;
+            document.getElementById('game-status-text').innerText = "탐험 중...";
+
+            items = [];
+            const foodItems = [
+                { emoji: '🥔', name: '감자' },
+                { emoji: '🥕', name: '당근' },
+                { emoji: '🧅', name: '양파' },
+                { emoji: '🍛', name: '카레 루' }
+            ];
+
+            while(items.length < totalItemsNeeded) {
+                let rr = Math.floor(Math.random() * gridSize);
+                let rc = Math.floor(Math.random() * gridSize);
+                if((rr !== 0 || rc !== 0) && !isWall(rr, rc) && !items.some(i => i.r === rr && i.c === rc)) {
+                    items.push({ r: rr, c: rc, emoji: foodItems[items.length].emoji, collected: false });
+                }
+            }
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const board = document.getElementById('grid-board');
+            board.innerHTML = '';
+            for(let r=0; r<gridSize; r++) {
+                for(let c=0; c<gridSize; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = "maze-cell rounded-xl flex items-center justify-center text-2xl transition shadow-sm";
+                    
+                    if(isWall(r, c)) {
+                        cell.className += " bg-slate-300 text-slate-500";
+                        cell.innerHTML = '<i class="fa-solid fa-box text-xs opacity-50"></i>';
+                    } else {
+                        const isGray = (r + c) % 2 === 1;
+                        cell.className += isGray ? " bg-slate-200" : " bg-white";
+
+                        const item = items.find(i => i.r === r && i.c === c && !i.collected);
+                        if(item) {
+                            cell.innerText = item.emoji;
+                        }
+
+                        if(playerPos.r === r && playerPos.c === c) {
+                            cell.innerText = '🐳';
+                            cell.className += " bg-brand/40 border-2 border-brand scale-105";
+                        }
+                    }
+
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function movePlayer(direction) {
+            if(!gameActive) {
+                startMiniGame();
+                return;
+            }
+
+            let nextR = playerPos.r;
+            let nextC = playerPos.c;
+
+            if(direction === 'up' && playerPos.r > 0) nextR--;
+            if(direction === 'down' && playerPos.r < gridSize - 1) nextR++;
+            if(direction === 'left' && playerPos.c > 0) nextC--;
+            if(direction === 'right' && playerPos.c < gridSize - 1) nextC++;
+
+            if(isWall(nextR, nextC)) return;
+
+            playerPos.r = nextR;
+            playerPos.c = nextC;
+
+            const foundItem = items.find(i => i.r === playerPos.r && i.c === playerPos.c && !i.collected);
+            if(foundItem) {
+                foundItem.collected = true;
+                collectedCount++;
+                document.getElementById('game-items-collected').innerText = collectedCount;
+                if(collectedCount >= totalItemsNeeded) {
+                    gameActive = false;
+                    document.getElementById('game-status-text').innerText = "미션 성공!";
+                    
+                    if (typeof confetti === 'function') {
+                        confetti({
+                            particleCount: 120,
+                            spread: 80,
+                            origin: { y: 0.6 }
+                        });
+                    }
+
+                    setTimeout(() => {
+                        document.getElementById('clear-modal').classList.remove('hidden');
+                    }, 300);
+                }
+            }
+
+            renderGrid();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                if(document.getElementById('section-game').classList.contains('active')) {
+                    e.preventDefault();
+                    if(e.key === 'ArrowUp') movePlayer('up');
+                    if(e.key === 'ArrowDown') movePlayer('down');
+                    if(e.key === 'ArrowLeft') movePlayer('left');
+                    if(e.key === 'ArrowRight') movePlayer('right');
+                }
+            }
+        });
+
+        function goToRewardPage() {
+            document.getElementById('clear-modal').classList.add('hidden');
+            switchPage('reward');
+        }
+
+        // Global Languages Dictionary for Weekly Recipe & Rewards
+        const translations = {
+            ko: {
+                recipeTag: "이번 주 추천 요리",
+                recipeTitle: "아이와 함께 만드는 고소한 야채 카레",
+                ingredientsLabel: "필요한 재료:",
+                ingredients: [
+                    { emoji: "🥔", text: "감자 2개" },
+                    { emoji: "🥕", text: "당근 1개" },
+                    { emoji: "🧅", text: "양파 1개" },
+                    { emoji: "🍛", text: "카레 루 1개" }
+                ],
+                stepsLabel: "조리 방법:",
+                steps: `
+                    <p>1️⃣ 🥔 <span class="font-bold">신선한 감자</span>와 🥕 <span class="font-bold">당근</span>, 🧅 <span class="font-bold">양파</span>를 깨끗이 씻고 한 입 크기로 썰어주세요.</p>
+                    <p>2️⃣ 🍳 냄비에 기름을 두르고 채소를 살짝 볶아줍니다.</p>
+                    <p>3️⃣ 💧 물을 붓고 채소가 익을 때까지 끓인 뒤 🍛 <span class="font-bold">카레 루</span>를 넣고 부드럽게 녹여주세요.</p>
+                `,
+                scheduleTitle: "주간 레시피 갱신 안내",
+                scheduleDesc: "매주 새로운 주간 레시피와 새로운 식재료 탐험 미션으로 변경됩니다!",
+                targetTitle: "참여 대상",
+                targetDesc: "이마트를 방문하는 모든 어린이 동반 고객 가족",
+                rewardTitle: "미션 완료 증정 리워드 라인업"
+            },
+            en: {
+                recipeTag: "This Week's Recipe",
+                recipeTitle: "Savory Vegetable Curry with Kids",
+                ingredientsLabel: "Ingredients:",
+                ingredients: [
+                    { emoji: "🥔", text: "2 Potatoes" },
+                    { emoji: "🥕", text: "1 Carrot" },
+                    { emoji: "🧅", text: "1 Onion" },
+                    { emoji: "🍛", text: "1 Curry Block" }
+                ],
+                stepsLabel: "Cooking Steps:",
+                steps: `
+                    <p>1️⃣ 🥔 Wash fresh <span class="font-bold">potatoes</span>, 🥕 <span class="font-bold">carrots</span>, and 🧅 <span class="font-bold">onions</span>, then chop into bite-sized pieces.</p>
+                    <p>2️⃣ 🍳 Sauté vegetables lightly in a pot with oil.</p>
+                    <p>3️⃣ 💧 Add water, boil until tender, then stir in the 🍛 <span class="font-bold">curry block</span> until smooth.</p>
+                `,
+                scheduleTitle: "Weekly Recipe Schedule",
+                scheduleDesc: "Updated every week with new weekly recipes and fresh exploration missions!",
+                targetTitle: "Participants",
+                targetDesc: "All families visiting Emart with children",
+                rewardTitle: "Mission Completion Rewards Lineup"
+            },
+            zh: {
+                recipeTag: "本周推荐食谱",
+                recipeTitle: "与孩子一起制作的香浓蔬菜咖喱",
+                ingredientsLabel: "所需食材：",
+                ingredients: [
+                    { emoji: "🥔", text: "土豆 2个" },
+                    { emoji: "🥕", text: "胡萝卜 1个" },
+                    { emoji: "🧅", text: "洋葱 1个" },
+                    { emoji: "🍛", text: "咖喱块 1块" }
+                ],
+                stepsLabel: "烹饪步骤：",
+                steps: `
+                    <p>1️⃣ 🥔 将新鲜<span class="font-bold">土豆</span>、🥕 <span class="font-bold">胡萝卜</span>和 🧅 <span class="font-bold">洋葱</span>洗净并切成小块。</p>
+                    <p>2️⃣ 🍳 在锅中放少许油，将蔬菜稍微翻炒。</p>
+                    <p>3️⃣ 💧 加入水煮至蔬菜变软，然后加入 🍛 <span class="font-bold">咖喱块</span>搅拌融化。</p>
+                `,
+                scheduleTitle: "周常食谱更新说明",
+                scheduleDesc: "每周更新全新的周常食谱和食材探索任务！",
+                targetTitle: "参与对象",
+                targetDesc: "所有光临易买得（Emart）带儿童的家庭",
+                rewardTitle: "任务完成奖励阵容"
+            },
+            ja: {
+                recipeTag: "今週のレシピ",
+                recipeTitle: "子供と一緒に作るコクのある野菜カレー",
+                ingredientsLabel: "必要な材料：",
+                ingredients: [
+                    { emoji: "🥔", text: "じゃがいも 2個" },
+                    { emoji: "🥕", text: "にんじん 1本" },
+                    { emoji: "🧅", text: "玉ねぎ 1個" },
+                    { emoji: "🍛", text: "カレールー 1箱" }
+                ],
+                stepsLabel: "作り方：",
+                steps: `
+                    <p>1️⃣ 🥔 新鮮な<span class="font-bold">じゃがいも</span>、🥕 <span class="font-bold">にんじん</span>、🧅 <span class="font-bold">玉ねぎ</span>を洗い、一口大に切ります。</p>
+                    <p>2️⃣ 🍳 鍋に油を熱し、野菜を軽く炒めます。</p>
+                    <p>3️⃣ 💧 水を加えて柔らかくまで煮込み、🍛 <span class="font-bold">カレールー</span>を溶かします。</p>
+                `,
+                scheduleTitle: "週間レシピ更新案内",
+                scheduleDesc: "毎週新しい週間レシピと食材探索ミッションに更新されます！",
+                targetTitle: "参加対象",
+                targetDesc: "イーマートをご利用のお子様連れのご家族すべて",
+                rewardTitle: "ミッション達成リワード一覧"
+            },
+            es: {
+                recipeTag: "Receta de la Semana",
+                recipeTitle: "Curry de Verduras con los Niños",
+                ingredientsLabel: "Ingredientes:",
+                ingredients: [
+                    { emoji: "🥔", text: "2 Patatas" },
+                    { emoji: "🥕", text: "1 Zanahoria" },
+                    { emoji: "🧅", text: "1 Cebolla" },
+                    { emoji: "🍛", text: "1 Bloque de Curry" }
+                ],
+                stepsLabel: "Pasos de Preparación:",
+                steps: `
+                    <p>1️⃣ 🥔 Lave las <span class="font-bold">patatas</span>, 🥕 <span class="font-bold">zanahorias</span> y 🧅 <span class="font-bold">cebollas</span> y córtelas en trozos.</p>
+                    <p>2️⃣ 🍳 Saltee ligeramente las verduras en una sartén con aceite.</p>
+                    <p>3️⃣ 💧 Agregue agua, hierva hasta que estén tiernas y disuelva el 🍛 <span class="font-bold">curry</span>.</p>
+                `,
+                scheduleTitle: "Actualización de Recetas",
+                scheduleDesc: "¡Actualizado cada semana con nuevas recetas y misiones de exploración!",
+                targetTitle: "Participantes",
+                targetDesc: "Todas las familias que visitan Emart con niños",
+                rewardTitle: "Premios por Completar la Misión"
+            },
+            vi: {
+                recipeTag: "Công thức tuần này",
+                recipeTitle: "Cà ri rau củ thơm ngon cùng bé",
+                ingredientsLabel: "Nguyên liệu:",
+                ingredients: [
+                    { emoji: "🥔", text: "2 củ khoai tây" },
+                    { emoji: "🥕", text: "1 củ cà rốt" },
+                    { emoji: "🧅", text: "1 củ hành tây" },
+                    { emoji: "🍛", text: "1 viên cà ri" }
+                ],
+                stepsLabel: "Cách làm:",
+                steps: `
+                    <p>1️⃣ 🥔 Rửa sạch <span class="font-bold">khoai tây</span>, 🥕 <span class="font-bold">cà rốt</span> và 🧅 <span class="font-bold">hành tây</span> rồi cắt vừa ăn.</p>
+                    <p>2️⃣ 🍳 Xào sơ rau củ trong nồi với dầu ăn.</p>
+                    <p>3️⃣ 💧 Thêm nước, đun sôi cho mềm rồi cho 🍛 <span class="font-bold">viên cà ri</span> vào khuấy đều.</p>
+                `,
+                scheduleTitle: "Lịch cập nhật thực đơn",
+                scheduleDesc: "Cập nhật công thức hàng tuần và nhiệm vụ khám phá mới mỗi tuần!",
+                targetTitle: "Đối tượng tham gia",
+                targetDesc: "Tất cả các gia đình đi cùng trẻ em ghé thăm Emart",
+                rewardTitle: "Danh sách phần thưởng hoàn thành nhiệm vụ"
+            }
+        };
+
+        function changeRecipeLang(lang) {
+            const data = translations[lang] || translations['ko'];
+            document.getElementById('recipe-tag').innerText = data.recipeTag;
+            document.getElementById('recipe-title').innerText = data.recipeTitle;
+            document.getElementById('recipe-ingredients-label').innerHTML = `<i class="fa-solid fa-basket-shopping mr-2 text-amber-500"></i>${data.ingredientsLabel}`;
+            document.getElementById('recipe-steps-label').innerHTML = `<i class="fa-solid fa-utensils mr-2 text-amber-500"></i>${data.stepsLabel}`;
+            document.getElementById('recipe-steps-desc').innerHTML = data.steps;
+
+            const ingContainer = document.getElementById('recipe-ingredients');
+            ingContainer.innerHTML = '';
+            
+            const badgeColors = [
+                "bg-amber-100 text-amber-900 border-amber-200",
+                "bg-orange-100 text-orange-900 border-orange-200",
+                "bg-purple-100 text-purple-900 border-purple-200",
+                "bg-yellow-100 text-yellow-900 border-yellow-200"
+            ];
+
+            data.ingredients.forEach((item, idx) => {
+                const span = document.createElement('span');
+                const colorClass = badgeColors[idx % badgeColors.length];
+                span.className = `${colorClass} border text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-2 shadow-sm`;
+                span.innerHTML = `<span>${item.emoji}</span><span>${item.text}</span>`;
+                ingContainer.appendChild(span);
+            });
+        }
+
+        function changeRewardLang(lang) {
+            const data = translations[lang] || translations['ko'];
+            document.getElementById('schedule-title-text').innerText = data.scheduleTitle;
+            document.getElementById('schedule-desc-text').innerText = data.scheduleDesc;
+            document.getElementById('target-title-text').innerText = data.targetTitle;
+            document.getElementById('target-desc-text').innerText = data.targetDesc;
+            document.getElementById('reward-lineup-title').innerText = data.rewardTitle;
+        }
+
+        // Review helpers
+        function scrollToReviewForm() {
+            const formAnchor = document.getElementById('review-form-anchor');
+            if(formAnchor) formAnchor.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function scrollToReviewList() {
+            const reviewList = document.getElementById('review-list');
+            if(reviewList) reviewList.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Review Submission Handling with photo support
+        function submitReview(event) {
+            event.preventDefault();
+            const author = document.getElementById('review-author').value;
+            const content = document.getElementById('review-content').value;
+            const photoInput = document.getElementById('review-photo');
+            const list = document.getElementById('review-list');
+
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+
+            if (photoInput.files && photoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const item = document.createElement('div');
+                    item.className = "bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3";
+                    item.innerHTML = `
+                        <div class="flex justify-between items-center text-xs text-slate-500">
+                            <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> ${author}</span>
+                            <span>${today}</span>
+                        </div>
+                        <img src="${e.target.result}" class="w-full h-48 object-cover rounded-xl mt-2 border border-slate-200" alt="Review Photo">
+                        <p class="text-xs text-slate-700 leading-relaxed">${content}</p>
+                    `;
+                    list.prepend(item);
+                }
+                reader.readAsDataURL(photoInput.files[0]);
+            } else {
+                const item = document.createElement('div');
+                item.className = "bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3";
+                item.innerHTML = `
+                    <div class="flex justify-between items-center text-xs text-slate-500">
+                        <span class="font-bold text-navy flex items-center"><i class="fa-solid fa-user-circle mr-1 text-amber-500"></i> ${author}</span>
+                        <span>${today}</span>
+                    </div>
+                    <p class="text-xs text-slate-700 leading-relaxed">${content}</p>
+                `;
+                list.prepend(item);
+            }
+
+            document.getElementById('review-author').value = '';
+            document.getElementById('review-content').value = '';
+            document.getElementById('review-photo').value = '';
+            alertBox('소중한 후기와 인증 사진이 성공적으로 등록되었습니다!');
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            startMiniGame();
+            updateCardSlide();
+        };
+    </script>
+</body>
+</html>
